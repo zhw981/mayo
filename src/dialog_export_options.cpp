@@ -50,9 +50,9 @@ QByteArray toByteArray(const Application::ExportOptions& opts)
     QByteArray bytes;
     QDataStream stream(&bytes, QIODevice::WriteOnly);
     stream << static_cast<uint32_t>(opts.stlFormat)
-           << opts.stlaSolidName.c_str()
-           << static_cast<uint32_t>(opts.stlaFloat32Format)
-           << static_cast<uint32_t>(opts.stlaFloat32Precision);
+           << opts.stlAsciiSolidName.c_str()
+           << static_cast<uint32_t>(opts.stlAsciiFloat32Format)
+           << static_cast<uint32_t>(opts.stlAsciiFloat32Precision);
     return bytes;
 }
 
@@ -64,11 +64,11 @@ Application::ExportOptions fromByteArray(const QByteArray& bytes)
 
     char* stlaSolidName = nullptr;
     stream >> stlaSolidName;
-    opts.stlaSolidName = stlaSolidName;
+    opts.stlAsciiSolidName = stlaSolidName;
     delete[] stlaSolidName;
 
-    stream >> *reinterpret_cast<uint32_t*>(&opts.stlaFloat32Format);
-    stream >> *reinterpret_cast<uint32_t*>(&opts.stlaFloat32Precision);
+    stream >> *reinterpret_cast<uint32_t*>(&opts.stlAsciiFloat32Format);
+    stream >> *reinterpret_cast<uint32_t*>(&opts.stlAsciiFloat32Precision);
 
     return opts;
 }
@@ -81,11 +81,11 @@ DialogExportOptions::DialogExportOptions(QWidget *parent)
 {
     m_ui->setupUi(this);
     m_ui->comboBox_StlFormat->addItem(
-                tr("ASCII"), GMIO_STL_FORMAT_ASCII);
+                tr("ASCII"), gmio::STL_Format_Ascii);
     m_ui->comboBox_StlFormat->addItem(
-                tr("Binary litte-endian"), GMIO_STL_FORMAT_BINARY_LE);
+                tr("Binary litte-endian"), gmio::STL_Format_BinaryLittleEndian);
     m_ui->comboBox_StlFormat->addItem(
-                tr("Binary big-endian"), GMIO_STL_FORMAT_BINARY_BE);
+                tr("Binary big-endian"), gmio::STL_Format_BinaryBigEndian);
 
     QSettings settings;
     const QByteArray bytesExportOptions =
@@ -98,24 +98,24 @@ DialogExportOptions::DialogExportOptions(QWidget *parent)
                     m_ui->comboBox_StlFormat->findData(opts.stlFormat));
         m_ui->lineEdit_StlGmioAsciiSolidName->setText(
                     QString::fromLatin1(
-                        QByteArray::fromStdString(opts.stlaSolidName)));
-        switch (opts.stlaFloat32Format) {
-        case GMIO_FLOAT_TEXT_FORMAT_DECIMAL_LOWERCASE:
-        case GMIO_FLOAT_TEXT_FORMAT_DECIMAL_UPPERCASE:
+                        QByteArray::fromStdString(opts.stlAsciiSolidName)));
+        switch (opts.stlAsciiFloat32Format) {
+        case gmio::FloatTextFormat::DecimalLowercase:
+        case gmio::FloatTextFormat::DecimalUppercase:
             m_ui->comboBox_StlGmioAsciiFloatFormat->setCurrentIndex(0); break;
-        case GMIO_FLOAT_TEXT_FORMAT_SCIENTIFIC_LOWERCASE:
-        case GMIO_FLOAT_TEXT_FORMAT_SCIENTIFIC_UPPERCASE:
+        case gmio::FloatTextFormat::ScientificLowercase:
+        case gmio::FloatTextFormat::ScientificUppercase:
             m_ui->comboBox_StlGmioAsciiFloatFormat->setCurrentIndex(1); break;
-        case GMIO_FLOAT_TEXT_FORMAT_SHORTEST_LOWERCASE:
-        case GMIO_FLOAT_TEXT_FORMAT_SHORTEST_UPPERCASE:
+        case gmio::FloatTextFormat::ShortestLowercase:
+        case gmio::FloatTextFormat::ShortestUppercase:
             m_ui->comboBox_StlGmioAsciiFloatFormat->setCurrentIndex(2); break;
         }
         const bool isFormatUppercase =
-                opts.stlaFloat32Format == GMIO_FLOAT_TEXT_FORMAT_DECIMAL_UPPERCASE
-                || opts.stlaFloat32Format == GMIO_FLOAT_TEXT_FORMAT_SCIENTIFIC_UPPERCASE
-                || opts.stlaFloat32Format == GMIO_FLOAT_TEXT_FORMAT_SHORTEST_UPPERCASE;
+                opts.stlAsciiFloat32Format == gmio::FloatTextFormat::DecimalUppercase
+                || opts.stlAsciiFloat32Format == gmio::FloatTextFormat::ScientificUppercase
+                || opts.stlAsciiFloat32Format == gmio::FloatTextFormat::ShortestUppercase;
         m_ui->checkBox_StlGmioAsciiFloatFormatUppercase->setChecked(isFormatUppercase);
-        m_ui->spinBox_StlGmioAsciiFloatPrecision->setValue(opts.stlaFloat32Precision);
+        m_ui->spinBox_StlGmioAsciiFloatPrecision->setValue(opts.stlAsciiFloat32Precision);
     }
 }
 
@@ -148,14 +148,14 @@ void DialogExportOptions::setPartFormat(Application::PartFormat format)
             });
             m_ui->widget_StlGmioAscii->setEnabled(
                         m_ui->comboBox_StlFormat->currentData().toInt()
-                        == GMIO_STL_FORMAT_ASCII);
+                        == gmio::STL_Format_Ascii);
         }
         else {
             if (m_ui->comboBox_StlFormat->currentData().toInt()
-                    == GMIO_STL_FORMAT_BINARY_BE)
+                    == gmio::STL_Format_BinaryBigEndian)
             {
                 const int comboBoxBinLeId =
-                        m_ui->comboBox_StlFormat->findData(GMIO_STL_FORMAT_BINARY_LE);
+                        m_ui->comboBox_StlFormat->findData(gmio::STL_Format_BinaryLittleEndian);
                 m_ui->comboBox_StlFormat->setCurrentIndex(comboBoxBinLeId);
             }
         }
@@ -166,31 +166,31 @@ Application::ExportOptions DialogExportOptions::currentExportOptions() const
 {
     const Options::StlIoLibrary lib = Options::instance()->stlIoLibrary();
     Application::ExportOptions options;
-    options.stlFormat = static_cast<gmio_stl_format>(
+    options.stlFormat = static_cast<gmio::STL_Format>(
                 m_ui->comboBox_StlFormat->currentData().toInt());
     if (lib == Options::StlIoLibrary::Gmio) {
-        options.stlaSolidName =
+        options.stlAsciiSolidName =
                 m_ui->lineEdit_StlGmioAsciiSolidName->text().toLatin1().toStdString();
         const int comboBoxFloatFormatId =
                 m_ui->comboBox_StlGmioAsciiFloatFormat->currentIndex();
         const bool floatFormatUppercase =
                 m_ui->checkBox_StlGmioAsciiFloatFormatUppercase->isChecked();
         if (comboBoxFloatFormatId == 0) {
-            options.stlaFloat32Format = floatFormatUppercase ?
-                        GMIO_FLOAT_TEXT_FORMAT_DECIMAL_UPPERCASE :
-                        GMIO_FLOAT_TEXT_FORMAT_DECIMAL_LOWERCASE;
+            options.stlAsciiFloat32Format = floatFormatUppercase ?
+                        gmio::FloatTextFormat::DecimalUppercase :
+                        gmio::FloatTextFormat::DecimalLowercase;
         }
         else if (comboBoxFloatFormatId == 1) {
-            options.stlaFloat32Format = floatFormatUppercase ?
-                        GMIO_FLOAT_TEXT_FORMAT_SCIENTIFIC_UPPERCASE :
-                        GMIO_FLOAT_TEXT_FORMAT_SCIENTIFIC_LOWERCASE;
+            options.stlAsciiFloat32Format = floatFormatUppercase ?
+                        gmio::FloatTextFormat::ScientificUppercase :
+                        gmio::FloatTextFormat::ScientificLowercase;
         }
         else if (comboBoxFloatFormatId == 2) {
-            options.stlaFloat32Format = floatFormatUppercase ?
-                        GMIO_FLOAT_TEXT_FORMAT_SHORTEST_LOWERCASE :
-                        GMIO_FLOAT_TEXT_FORMAT_SHORTEST_UPPERCASE;
+            options.stlAsciiFloat32Format = floatFormatUppercase ?
+                        gmio::FloatTextFormat::ShortestLowercase :
+                        gmio::FloatTextFormat::ShortestUppercase;
         }
-        options.stlaFloat32Precision =
+        options.stlAsciiFloat32Precision =
                 m_ui->spinBox_StlGmioAsciiFloatPrecision->value();
     }
     return options;

@@ -67,11 +67,11 @@ public:
 
     struct ExportOptions {
 #ifdef HAVE_GMIO
-        gmio_stl_format stlFormat = GMIO_STL_FORMAT_UNKNOWN;
-        std::string stlaSolidName;
-        gmio_float_text_format stlaFloat32Format =
-                GMIO_FLOAT_TEXT_FORMAT_SHORTEST_LOWERCASE;
-        uint8_t stlaFloat32Precision = 9;
+        gmio::STL_Format stlFormat = gmio::STL_Format_Unknown;
+        std::string stlAsciiSolidName;
+        gmio::FloatTextFormat stlAsciiFloat32Format =
+                gmio::FloatTextFormat::ShortestLowercase;
+        uint8_t stlAsciiFloat32Precision = 9;
 #else
         enum class StlFormat {
             Ascii,

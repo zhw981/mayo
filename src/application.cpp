@@ -91,71 +91,61 @@ static QMutex* globalMutex()
 }
 
 #ifdef HAVE_GMIO
-static bool gmio_qttask_is_stop_requested(void* cookie)
-{
-    auto progress = static_cast<const qttask::Progress*>(cookie);
-    return progress != nullptr ? progress->isAbortRequested() : false;
-}
+class GmioQtTaskProgress : public gmio::Task {
+public:
+    GmioQtTaskProgress(qttask::Progress* progress)
+        : m_progress(progress)
+    {}
 
-static void gmio_qttask_handle_progress(
-        void* cookie, intmax_t value, intmax_t maxValue)
-{
-    auto progress = static_cast<qttask::Progress*>(cookie);
-    if (progress != nullptr && maxValue > 0) {
-        const auto pctNorm = value / static_cast<double>(maxValue);
-        const auto pct = qRound(pctNorm * 100);
-        if (pct >= (progress->value() + 5))
-            progress->setValue(pct);
+    bool isStopRequested() const override {
+        return m_progress->isAbortRequested();
     }
-}
 
-static gmio_task_iface gmio_qttask_create_task_iface(qttask::Progress* progress)
-{
-    gmio_task_iface task = {};
-    task.cookie = progress;
-    task.func_is_stop_requested = gmio_qttask_is_stop_requested;
-    task.func_handle_progress = gmio_qttask_handle_progress;
-    return task;
-}
+    void handleProgress(uint64_t value, uint64_t maxValue) override {
+        if (maxValue > 0) {
+            const auto pctNorm = value / static_cast<double>(maxValue);
+            const auto pct = qRound(pctNorm * 100);
+            if (pct >= (m_progress->value() + 5))
+                m_progress->setValue(pct);
+        }
+    }
+
+private:
+    qttask::Progress* m_progress;
+};
 
 static QString gmioErrorToQString(int error)
 {
     switch (error) {
     // Core
-    case GMIO_ERROR_OK:
+    case gmio::Error_OK:
         return QString();
-    case GMIO_ERROR_UNKNOWN:
-        return Application::tr("GMIO_ERROR_UNKNOWN");
-    case GMIO_ERROR_NULL_MEMBLOCK:
-        return Application::tr("GMIO_ERROR_NULL_MEMBLOCK");
-    case GMIO_ERROR_INVALID_MEMBLOCK_SIZE:
-        return Application::tr("GMIO_ERROR_INVALID_MEMBLOCK_SIZE");
-    case GMIO_ERROR_STREAM:
-        return Application::tr("GMIO_ERROR_STREAM");
-    case GMIO_ERROR_TASK_STOPPED:
-        return Application::tr("GMIO_ERROR_TASK_STOPPED");
-    case GMIO_ERROR_STDIO:
-        return Application::tr("GMIO_ERROR_STDIO");
-    case GMIO_ERROR_BAD_LC_NUMERIC:
-        return Application::tr("GMIO_ERROR_BAD_LC_NUMERIC");
+    case gmio::Error_Unknown:
+        return Application::tr("gmio::Error_Unknown");
+    case gmio::Error_Stream:
+        return Application::tr("gmio::Error_Stream");
+    case gmio::Error_TaskStopped:
+        return Application::tr("gmio::Error_TaskStopped");
+    case gmio::Error_Stdio:
+        return Application::tr("gmio::Error_Stdio");
+    case gmio::Error_BadLcNumeric:
+        return Application::tr("gmio::Error_BadLcNumeric");
     // TODO: complete other core enum values
     // STL
-    case GMIO_STL_ERROR_UNKNOWN_FORMAT:
-        return Application::tr("GMIO_STL_ERROR_UNKNOWN_FORMAT");
-    case GMIO_STL_ERROR_NULL_FUNC_GET_TRIANGLE:
-        return Application::tr("GMIO_STL_ERROR_NULL_FUNC_GET_TRIANGLE");
-    case GMIO_STL_ERROR_PARSING:
-        return Application::tr("GMIO_STL_ERROR_PARSING");
-    case GMIO_STL_ERROR_INVALID_FLOAT32_PREC:
-        return Application::tr("GMIO_STL_ERROR_INVALID_FLOAT32_PREC");
-    case GMIO_STL_ERROR_UNSUPPORTED_BYTE_ORDER:
-        return Application::tr("GMIO_STL_ERROR_UNSUPPORTED_BYTE_ORDER");
-    case GMIO_STL_ERROR_HEADER_WRONG_SIZE:
-        return Application::tr("GMIO_STL_ERROR_HEADER_WRONG_SIZE");
-    case GMIO_STL_ERROR_FACET_COUNT:
-        return Application::tr("GMIO_STL_ERROR_FACET_COUNT");
+    case gmio::STL_Error_UnknownFormat:
+        return Application::tr("gmio::STL_Error_UnknownFormat");
+    case gmio::STL_Error_Parsing:
+        return Application::tr("gmio::STL_Error_Parsing");
+    case gmio::STL_Error_InvalidFloat32Prec:
+        return Application::tr("gmio::STL_Error_InvalidFloat32Prec");
+    case gmio::STL_Error_UnsupportedByteOrder:
+        return Application::tr("gmio::STL_Error_UnsupportedByteOrder");
+    case gmio::STL_Error_HeaderWrongSize:
+        return Application::tr("gmio::STL_Error_HeaderWrongSize");
+    case gmio::STL_Error_FacetCount:
+        return Application::tr("gmio::STL_Error_FacetCount");
     }
-    return Application::tr("GMIO_ERROR_UNKNOWN");
+    return Application::tr("gmio::Error_Unknown");
 }
 #endif
 
@@ -587,9 +577,9 @@ Application::PartFormat Application::findPartFormat(const QString &filepath)
     QFile file(filepath);
     if (file.open(QIODevice::ReadOnly)) {
 #ifdef HAVE_GMIO
-        gmio_stream qtstream = gmio_stream_qiodevice(&file);
-        const gmio_stl_format stlFormat = gmio_stl_format_probe(&qtstream);
-        if (stlFormat != GMIO_STL_FORMAT_UNKNOWN)
+        const gmio::STL_Format stlFormat =
+                gmio::STL_probeFormat(filepath.toLocal8Bit().constData());
+        if (stlFormat != gmio::STL_Format_Unknown)
             return Application::PartFormat::Stl;
 #endif
         std::array<char, 2048> contentsBegin;
@@ -656,20 +646,23 @@ Application::IoResult Application::importStl(
 #ifdef HAVE_GMIO
         QFile file(filepath);
         if (file.open(QIODevice::ReadOnly)) {
-            gmio_stream stream = gmio_stream_qiodevice(&file);
-            gmio_stl_read_options options = {};
-            options.func_stla_get_streamsize = &gmio_stla_infos_probe_streamsize;
-            options.task_iface = Internal::gmio_qttask_create_task_iface(progress);
-            int err = GMIO_ERROR_OK;
-            while (gmio_no_error(err) && !file.atEnd()) {
-                gmio_stl_mesh_creator_occpolytri meshcreator;
-                err = gmio_stl_read(&stream, &meshcreator, &options);
-                if (gmio_no_error(err)) {
+            Internal::GmioQtTaskProgress qttaskProgress(progress);
+            gmio::STL_ReadOptions options = {};
+            options.task = &qttaskProgress;
+            int err = gmio::Error_OK;
+            const auto funcRead = gmio::QIODevice_funcReadData(&file);
+            while (err == gmio::Error_OK && !file.atEnd()) {
+                const qint64 filepos = file.pos();
+                options.ascii_solid_size = gmio::STL_probeAsciiSolidSize(funcRead);
+                file.seek(filepos);
+                gmio::STL_MeshCreatorOccPolyTriangulation meshcreator;
+                err = gmio::STL_read(funcRead, &meshcreator, options);
+                if (err == gmio::Error_OK) {
                     const Handle_Poly_Triangulation& mesh = meshcreator.polytri();
                     doc->addRootItem(Internal::createMeshItem(filepath, mesh));
                 }
             }
-            result.ok = (err == GMIO_ERROR_OK);
+            result.ok = (err == gmio::Error_OK);
             if (!result.ok)
                 result.errorText = Internal::gmioErrorToQString(err);
         }
@@ -804,34 +797,34 @@ Application::IoResult Application::exportStl_gmio(
     QFile file(filepath);
 #ifdef HAVE_GMIO
     if (file.open(QIODevice::WriteOnly)) {
-        gmio_stream stream = gmio_stream_qiodevice(&file);
-        gmio_stl_write_options gmioOptions = {};
-        gmioOptions.stla_float32_format = options.stlaFloat32Format;
-        gmioOptions.stla_float32_prec = options.stlaFloat32Precision;
-        gmioOptions.stla_solid_name = options.stlaSolidName.c_str();
-        gmioOptions.task_iface =
-                Internal::gmio_qttask_create_task_iface(progress);
+        const auto funcWrite = gmio::QIODevice_funcWriteData(&file);
+        Internal::GmioQtTaskProgress qttaskProgress(progress);
+        gmio::STL_WriteOptions gmioOptions = {};
+        gmioOptions.ascii_float32_format = options.stlAsciiFloat32Format;
+        gmioOptions.ascii_float32_prec = options.stlAsciiFloat32Precision;
+        gmioOptions.ascii_solid_name = options.stlAsciiSolidName;
+        gmioOptions.task = &qttaskProgress;
         for (const DocumentItem* item : docItems) {
             if (progress != nullptr) {
                 progress->setStep(
                             tr("Writting item %1")
                             .arg(item->propertyLabel.value()));
             }
-            int error = GMIO_ERROR_OK;
+            int error = gmio::Error_OK;
             if (sameType<XdeDocumentItem>(item)) {
                 auto xdeDocItem = static_cast<const XdeDocumentItem*>(item);
                 const TopoDS_Shape shape = Internal::xdeDocumentWholeShape(xdeDocItem);
-                const gmio_stl_mesh_occshape gmioMesh(shape);
-                error = gmio_stl_write(
-                            options.stlFormat, &stream, &gmioMesh, &gmioOptions);
+                const gmio::STL_MeshOccShape gmioMesh(shape);
+                error = gmio::STL_write(
+                            options.stlFormat, funcWrite, gmioMesh, gmioOptions);
             }
             else if (sameType<MeshItem>(item)) {
                 auto meshItem = static_cast<const MeshItem*>(item);
-                const gmio_stl_mesh_occpolytri gmioMesh(meshItem->triangulation());
-                error = gmio_stl_write(
-                            options.stlFormat, &stream, &gmioMesh, &gmioOptions);
+                const gmio::STL_MeshOccPolyTriangulation gmioMesh(meshItem->triangulation());
+                error = gmio::STL_write(
+                            options.stlFormat, funcWrite, gmioMesh, gmioOptions);
             }
-            if (error != GMIO_ERROR_OK)
+            if (error != gmio::Error_OK)
                 return { false, Internal::gmioErrorToQString(error) };
         }
         return { true, QString() };
@@ -847,9 +840,9 @@ Application::IoResult Application::exportStl_OCC(
         qttask::Progress *progress)
 {
 #ifdef HAVE_GMIO
-    const bool isAsciiFormat = options.stlFormat == GMIO_STL_FORMAT_ASCII;
-    if (options.stlFormat != GMIO_STL_FORMAT_ASCII
-            && options.stlFormat != GMIO_STL_FORMAT_BINARY_LE)
+    const bool isAsciiFormat = options.stlFormat == gmio::STL_Format_Ascii;
+    if (options.stlFormat != gmio::STL_Format_Ascii
+            && options.stlFormat != gmio::STL_Format_BinaryLittleEndian)
     {
         return { false, tr("Format not supported") };
     }
