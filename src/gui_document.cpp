@@ -40,7 +40,6 @@
 #include "xde_document_item.h"
 #include "mesh_item.h"
 
-#include <Standard_Version.hxx>
 #include <Aspect_DisplayConnection.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
 #include <OpenGl_GraphicDriver.hxx>
@@ -54,16 +53,11 @@ namespace Mayo {
 
 namespace Internal {
 
-template<typename ITEM> struct ItemTraits { };
-template<> struct ItemTraits<XdeDocumentItem> { typedef GpxXdeDocumentItem GpxType; };
-template<> struct ItemTraits<MeshItem> { typedef GpxMeshItem GpxType; };
-
-template<typename ITEM>
+template<typename ITEM, typename GPX_ITEM>
 bool createGpxIfItemOfType(GpxDocumentItem** gpx, DocumentItem* item)
 {
     if (*gpx == nullptr && sameType<ITEM>(item)) {
-        typedef typename ItemTraits<ITEM>::GpxType GpxType;
-        *gpx = new GpxType(static_cast<ITEM*>(item));
+        *gpx = new GPX_ITEM(static_cast<ITEM*>(item));
         return true;
     }
     return false;
@@ -72,8 +66,8 @@ bool createGpxIfItemOfType(GpxDocumentItem** gpx, DocumentItem* item)
 static GpxDocumentItem* createGpxForItem(DocumentItem* item)
 {
     GpxDocumentItem* gpx = nullptr;
-    createGpxIfItemOfType<XdeDocumentItem>(&gpx, item);
-    createGpxIfItemOfType<MeshItem>(&gpx, item);
+    createGpxIfItemOfType<XdeDocumentItem, GpxXdeDocumentItem>(&gpx, item);
+    createGpxIfItemOfType<MeshItem, GpxMeshItem>(&gpx, item);
     return gpx;
 }
 
@@ -150,12 +144,23 @@ GpxDocumentItem *GuiDocument::findItemGpx(const DocumentItem *item) const
     return itFound != m_vecDocItemGpx.cend() ? itFound->gpx : nullptr;
 }
 
+const Bnd_Box &GuiDocument::gpxBoundingBox() const
+{
+    return m_gpxBoundingBox;
+}
+
 void GuiDocument::onItemAdded(DocumentItem *item)
 {
     const DocumentItem_Gpx pair = { item, Internal::createGpxForItem(item) };
-    m_aisContext->Display(pair.gpx->handleGpxObject(), Standard_True);
+    const Handle_AIS_InteractiveObject aisObject = pair.gpx->handleGpxObject();
+    m_aisContext->Display(aisObject, true);
     m_vecDocItemGpx.emplace_back(std::move(pair));
     m_guiDocView3d->widgetOccView()->fitAll();
+
+    Bnd_Box bndBox;
+    aisObject->BoundingBox(bndBox);
+    m_gpxBoundingBox.Add(bndBox);
+    emit gpxBoundingBoxChanged(m_gpxBoundingBox);
 }
 
 void GuiDocument::onItemErased(const DocumentItem *item)
@@ -165,10 +170,20 @@ void GuiDocument::onItemErased(const DocumentItem *item)
                 m_vecDocItemGpx.end(),
                 [=](const DocumentItem_Gpx& pair) { return pair.item == item; });
     if (itFound != m_vecDocItemGpx.end()) {
+        // Delete gpx item
         Internal::eraseGpxObjectFromContext(
                     itFound->gpx->handleGpxObject(), m_aisContext);
         delete itFound->gpx;
         m_vecDocItemGpx.erase(itFound);
+
+        // Recompute bounding box
+        m_gpxBoundingBox.SetVoid();
+        for (const DocumentItem_Gpx& pair : m_vecDocItemGpx) {
+            Bnd_Box bndBox;
+            pair.gpx->gpxObject()->BoundingBox(bndBox);
+            m_gpxBoundingBox.Add(bndBox);
+        }
+        emit gpxBoundingBoxChanged(m_gpxBoundingBox);
     }
 }
 
