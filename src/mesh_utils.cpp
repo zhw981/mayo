@@ -7,7 +7,7 @@
 #include "mesh_utils.h"
 #include <cmath>
 
-namespace occ {
+namespace Mayo {
 
 double MeshUtils::triangleSignedVolume(
         const gp_XYZ &p1, const gp_XYZ &p2, const gp_XYZ &p3)
@@ -68,4 +68,4 @@ double MeshUtils::triangulationArea(
     return area;
 }
 
-} // namespace occ
+} // namespace Mayo

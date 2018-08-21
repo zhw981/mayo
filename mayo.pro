@@ -22,6 +22,7 @@ HEADERS += \
     src/3rdparty/fougtools/qttools/gui/item_view_utils.h \
     src/3rdparty/fougtools/qttools/gui/proxy_styled_item_delegate.h \
     src/3rdparty/fougtools/qttools/gui/qwidget_utils.h \
+    src/3rdparty/scope_guard/scope_guard.hpp \
     src/application.h \
     src/application_item.h \
     src/application_item_selection_model.h \
@@ -44,11 +45,17 @@ HEADERS += \
     src/gpx_xde_document_item.h \
     src/gui_application.h \
     src/gui_document.h \
+    src/io_base.h \
+    src/io_iges.h \
+    src/io_occ_brep.h \
+    src/io_step.h \
+    src/io_stl.h \
     src/libtree.h \
     src/mainwindow.h \
     src/math_utils.h \
     src/mesh_item.h \
     src/mesh_utils.h \
+    src/occ_progress.h \
     src/occt_window.h \
     src/options.h \
     src/property.h \
@@ -57,6 +64,7 @@ HEADERS += \
     src/qt_occ_view_controller.h \
     src/quantity.h \
     src/result.h \
+    src/scope_guard.h \
     src/span.h \
     src/string_utils.h \
     src/theme.h \
@@ -70,7 +78,7 @@ HEADERS += \
     src/widget_occ_view.h \
     src/widget_properties_editor.h \
     src/xde_document_item.h \
-    src/xde_shape_property_owner.h
+    src/xde_shape_property_owner.h \
 
 SOURCES += \
     src/3rdparty/fougtools/occtools/qt_utils.cpp \
@@ -100,11 +108,17 @@ SOURCES += \
     src/gpx_xde_document_item.cpp \
     src/gui_application.cpp \
     src/gui_document.cpp \
+    src/io_base.cpp \
+    src/io_iges.cpp \
+    src/io_occ_brep.cpp \
+    src/io_step.cpp \
+    src/io_stl.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
     src/math_utils.cpp \
     src/mesh_item.cpp \
     src/mesh_utils.cpp \
+    src/occ_progress.cpp \
     src/occt_window.cpp \
     src/options.cpp \
     src/property.cpp \
@@ -125,7 +139,7 @@ SOURCES += \
     src/widget_occ_view.cpp \
     src/widget_properties_editor.cpp \
     src/xde_document_item.cpp \
-    src/xde_shape_property_owner.cpp
+    src/xde_shape_property_owner.cpp \
 
 include(src/3rdparty/fougtools/qttools/task/qttools_task.pri)
 

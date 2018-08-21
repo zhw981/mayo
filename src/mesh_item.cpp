@@ -5,6 +5,7 @@
 ****************************************************************************/
 
 #include "mesh_item.h"
+#include "mesh_utils.h"
 
 #include <QtCore/QCoreApplication>
 
@@ -28,6 +29,12 @@ const Handle_Poly_Triangulation& MeshItem::triangulation() const
 void MeshItem::setTriangulation(const Handle_Poly_Triangulation& mesh)
 {
     m_triangulation = mesh;
+    this->propertyNodeCount.setValue(mesh->NbNodes());
+    this->propertyTriangleCount.setValue(mesh->NbTriangles());
+    this->propertyVolume.setQuantity(
+                MeshUtils::triangulationVolume(mesh) * Quantity_CubicMillimeter);
+    this->propertyArea.setQuantity(
+                MeshUtils::triangulationArea(mesh) * Quantity_SquaredMillimeter);
 }
 
 bool MeshItem::isNull() const

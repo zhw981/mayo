@@ -6,9 +6,12 @@
 
 #pragma once
 
+#include "quantity.h"
+
 #include <TopoDS_Face.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
+#include <QtCore/QFlags>
 
 namespace Mayo {
 
@@ -24,6 +27,23 @@ struct BRepUtils {
     static void forEachSubFace(const TopoDS_Shape& shape, FUNC fn);
 
     static bool moreComplex(TopAbs_ShapeEnum lhs, TopAbs_ShapeEnum rhs);
+
+    enum VolumeOption {
+        VolumeNone = 0x0,
+        VolumeOnlyClosed = 0x01,
+        VolumeSkipShared = 0x02
+    };
+    using VolumeOptions = QFlags<VolumeOption>;
+    enum AreaOption {
+        AreaNone = 0x0,
+        AreaSkipShared = 0x01
+    };
+    using AreaOptions = QFlags<AreaOption>;
+
+    static QuantityVolume volume(
+            const TopoDS_Shape& shape, VolumeOptions opt = VolumeNone);
+    static QuantityArea area(
+            const TopoDS_Shape& shape, AreaOptions opt = AreaNone);
 };
 
 

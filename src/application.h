@@ -6,12 +6,8 @@
 
 #pragma once
 
-#include "result.h"
+#include "io_base.h"
 
-#ifdef HAVE_GMIO
-#  include <gmio_core/text_format.h>
-#  include <gmio_stl/stl_format.h>
-#endif
 #include <QtCore/QObject>
 #include <string>
 #include <vector>
@@ -36,8 +32,6 @@ public:
         OccBrep,
         Stl
     };
-
-    using IoResult = Result<void>;
 
     struct ExportOptions {
 #ifdef HAVE_GMIO
@@ -75,13 +69,13 @@ public:
     static QStringList partFormatFilters();
     static PartFormat findPartFormat(const QString& filepath);
 
-    IoResult importInDocument(
+    IoBase::Result importInDocument(
             Document* doc,
             PartFormat format,
             const QString& filepath,
             qttask::Progress* progress = nullptr);
-    IoResult exportDocumentItems(
-            const std::vector<DocumentItem*>& docItems,
+    IoBase::Result exportDocumentItems(
+            Span<const ApplicationItem> spanAppItem,
             PartFormat format,
             const ExportOptions& options,
             const QString& filepath,
@@ -99,46 +93,6 @@ signals:
     // -- Implementation
 private:
     Application(QObject* parent = nullptr);
-
-    IoResult importIges(
-            Document* doc, const QString& filepath, qttask::Progress* progress);
-    IoResult importStep(
-            Document* doc, const QString& filepath, qttask::Progress* progress);
-    IoResult importOccBRep(
-            Document* doc, const QString& filepath, qttask::Progress* progress);
-    IoResult importStl(
-            Document* doc, const QString& filepath, qttask::Progress* progress);
-
-    IoResult exportIges(
-            const std::vector<DocumentItem*>& docItems,
-            const ExportOptions& options,
-            const QString& filepath,
-            qttask::Progress* progress);
-    IoResult exportStep(
-            const std::vector<DocumentItem*>& docItems,
-            const ExportOptions& options,
-            const QString& filepath,
-            qttask::Progress* progress);
-    IoResult exportOccBRep(
-            const std::vector<DocumentItem*>& docItems,
-            const ExportOptions& options,
-            const QString& filepath,
-            qttask::Progress* progress);
-    IoResult exportStl(
-            const std::vector<DocumentItem*>& docItems,
-            const ExportOptions& options,
-            const QString& filepath,
-            qttask::Progress* progress);
-    IoResult exportStl_gmio(
-            const std::vector<DocumentItem*>& docItems,
-            const ExportOptions& options,
-            const QString& filepath,
-            qttask::Progress* progress);
-    IoResult exportStl_OCC(
-            const std::vector<DocumentItem*>& docItems,
-            const ExportOptions& options,
-            const QString& filepath,
-            qttask::Progress* progress);
 
     std::vector<Document*> m_documents;
 };

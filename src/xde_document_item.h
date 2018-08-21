@@ -47,6 +47,8 @@ public:
     const Handle_XCAFDoc_ShapeTool& shapeTool() const;
     const Handle_XCAFDoc_ColorTool& colorTool() const;
 
+    TDF_Label createRootAssembly();
+
     void rebuildAssemblyTree();
     const Tree<TDF_Label>& assemblyTree() const;
 
