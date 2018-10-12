@@ -125,6 +125,8 @@ GuiDocument::GuiDocument(Document *doc)
                 0.075,
                 V3d_ZBUFFER);
 
+    m_v3dViewer->ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines);
+
     QObject::connect(doc, &Document::itemAdded, this, &GuiDocument::onItemAdded);
     QObject::connect(doc, &Document::itemErased, this, &GuiDocument::onItemErased);
 }
@@ -243,6 +245,14 @@ void GuiDocument::onItemAdded(DocumentItem *item)
     m_vecGuiDocumentItem.emplace_back(std::move(guiItem));
     GpxUtils::V3dView_fitAll(m_v3dView);
     BndUtils::add(&m_gpxBoundingBox, BndUtils::get(aisObject));
+    const BndBoxCoords bndCoords = BndBoxCoords::get(m_gpxBoundingBox);
+    const gp_Pnt bndCenter = bndCoords.center();
+    m_v3dViewer->SetRectangularGridValues(
+                -bndCenter.X(), -bndCenter.Y(), 50., 5., 0.);
+    const double gridSize =
+            1.25 * std::max(bndCoords.xmax - bndCoords.xmin,
+                            bndCoords.ymax - bndCoords.ymin);
+    m_v3dViewer->SetRectangularGridGraphicValues(gridSize, gridSize, 0.);
     emit gpxBoundingBoxChanged(m_gpxBoundingBox);
 }
 
