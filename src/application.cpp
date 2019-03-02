@@ -25,10 +25,44 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
+#include <functional>
 
 namespace Mayo {
 
 namespace Internal {
+
+struct IoObject {
+    using FuncGetOptions = std::function<PropertyOwner*()>;
+    using FuncReadFile = std::function<Io::Result(Document*, const QString&, qttask::Progress*)>;
+    using FuncWriteFile = std::function<Io::Result(Span<const ApplicationItem>, const QString&, qttask::Progress*)>;
+    FuncGetOptions funcOptionsRead;
+    FuncGetOptions funcOptionsWrite;
+    FuncReadFile funcReadFile;
+    FuncWriteFile funcWriteFile;
+
+    template<typename IO> static IoObject make()
+    {
+        IoObject obj;
+        obj.funcOptionsRead = &IO::optionsRead;
+        obj.funcOptionsWrite = &IO::optionsWrite;
+        obj.funcReadFile = &IO::readFile;
+        obj.funcWriteFile = &IO::writeFile;
+        return obj;
+    }
+};
+
+static const IoObject* findIoObject(Application::PartFormat format)
+{
+    using Format = Application::PartFormat;
+    static const std::map<Format, IoObject> mapIoObject = {
+        { Format::Iges, IoObject::make<IoIges>() },
+        { Format::Step, IoObject::make<IoStep>() },
+        { Format::OccBrep, IoObject::make<IoOccBRep>() },
+        { Format::Stl, IoObject::make<IoStl_OpenCascade>() }
+    };
+    auto it = mapIoObject.find(format);
+    return it != mapIoObject.cend() ? &it->second : nullptr;
+}
 
 template<size_t N>
 bool matchToken(const char* buffer, const char (&token)[N])
@@ -202,73 +236,49 @@ Application::findDocumentByLocation(const QFileInfo& loc) const
     return itDocFound;
 }
 
-IoBase::Result Application::importInDocument(
+IoHandler::Result Application::importInDocument(
         Document* doc,
         PartFormat format,
         const QString &filepath,
         qttask::Progress* progress)
 {
     progress->setStep(QFileInfo(filepath).fileName());
-    switch (format) {
-    case PartFormat::Iges: {
-        IoIges io;
-        return io.readFile(doc, filepath, progress);
-    }
-    case PartFormat::Step: {
-        IoStep io;
-        return io.readFile(doc, filepath, progress);
-    }
-    case PartFormat::OccBrep: {
-        IoOccBRep io;
-        return io.readFile(doc, filepath, progress);
-    }
-    case PartFormat::Stl: {
-        IoStl_OpenCascade io;
-        return io.readFile(doc, filepath, progress);
-    }
-    case PartFormat::Unknown:
-        break;
-    }
-    return IoBase::Result::error(tr("Unknown error"));
+    const Internal::IoObject* obj = Internal::findIoObject(format);
+    if (obj)
+        return obj->funcReadFile(doc, filepath, progress);
+    return IoHandler::Result::error(tr("Unknown error"));
 }
 
-IoBase::Result Application::exportDocumentItems(
+IoHandler::Result Application::exportDocumentItems(
         Span<const ApplicationItem> spanAppItem,
         PartFormat format,
-        const ExportOptions &options,
         const QString &filepath,
         qttask::Progress *progress)
 {
     progress->setStep(QFileInfo(filepath).fileName());
-    switch (format) {
-    case PartFormat::Iges: {
-        IoIges io;
-        return io.writeFile(spanAppItem, filepath, progress);
-    }
-    case PartFormat::Step: {
-        IoStep io;
-        return io.writeFile(spanAppItem, filepath, progress);
-    }
-    case PartFormat::OccBrep: {
-        IoOccBRep io;
-        return io.writeFile(spanAppItem, filepath, progress);
-    }
-    case PartFormat::Stl: {
-        IoStl_OpenCascade io;
-        return io.writeFile(spanAppItem, filepath, progress);
-    }
-    case PartFormat::Unknown:
-        break;
-    }
-    return IoBase::Result::error(tr("Unknown error"));
+    const Internal::IoObject* obj = Internal::findIoObject(format);
+    if (obj)
+        return obj->funcWriteFile(spanAppItem, filepath, progress);
+    return IoHandler::Result::error(tr("Unknown error"));
 }
 
-bool Application::hasExportOptionsForFormat(Application::PartFormat format)
+PropertyOwner* Application::optionsImport(Application::PartFormat format)
 {
-    return format == PartFormat::Stl;
+    const Internal::IoObject* obj = Internal::findIoObject(format);
+    if (obj)
+        return obj->funcOptionsRead();
+    return nullptr;
 }
 
-const std::vector<Application::PartFormat>& Application::partFormats()
+PropertyOwner* Application::optionsExport(Application::PartFormat format)
+{
+    const Internal::IoObject* obj = Internal::findIoObject(format);
+    if (obj)
+        return obj->funcOptionsWrite();
+    return nullptr;
+}
+
+Span<const Application::PartFormat> Application::partFormats()
 {
     const static std::vector<PartFormat> vecFormat = {
         PartFormat::Iges,

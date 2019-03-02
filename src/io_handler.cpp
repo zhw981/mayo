@@ -4,7 +4,7 @@
 ** See license at https://github.com/fougue/mayo/blob/master/LICENSE.txt
 ****************************************************************************/
 
-#include "io_base.h"
+#include "io_handler.h"
 #include "brep_utils.h"
 #include "document.h"
 #include "xde_document_item.h"
@@ -14,42 +14,7 @@
 
 namespace Mayo {
 
-struct IoBase::Private {
-    std::vector<Property*> m_vecOptionRead;
-    std::vector<Property*> m_vecOptionWrite;
-};
-
-IoBase::IoBase()
-    : d(new Private)
-{
-}
-
-IoBase::~IoBase()
-{
-    delete d;
-}
-
-IoBase::Options IoBase::optionsRead() const
-{
-    return d->m_vecOptionRead;
-}
-
-IoBase::Options IoBase::optionsWrite() const
-{
-    return d->m_vecOptionWrite;
-}
-
-void IoBase::addOptionRead(Property* prop)
-{
-    d->m_vecOptionRead.push_back(prop);
-}
-
-void IoBase::addOptionWrite(Property* prop)
-{
-    d->m_vecOptionWrite.push_back(prop);
-}
-
-std::vector<ApplicationItem> IoBase::xdeApplicationItems(
+std::vector<ApplicationItem> XdeUtils::xdeApplicationItems(
         Span<const ApplicationItem> spanAppItem)
 {
     std::vector<ApplicationItem> vecAppItem;
@@ -74,23 +39,31 @@ std::vector<ApplicationItem> IoBase::xdeApplicationItems(
             vecXdeNode.push_back(appItem.xdeAssemblyNode());
         }
     }
+
     for (const XdeAssemblyNode& xdeNode : vecXdeNode) {
         if (setXdeDocItem.find(xdeNode.ownerDocItem) == setXdeDocItem.cend())
             vecAppItem.emplace_back(xdeNode);
     }
+
     for (XdeDocumentItem* xdeDocItem : setXdeDocItem)
         vecAppItem.emplace_back(xdeDocItem);
 
     return vecAppItem;
 }
 
-void IoBase::init(XdeDocumentItem* xdeDocItem, const QString& filepath)
+void XdeUtils::initProperties(XdeDocumentItem* xdeDocItem, const QString& filepath)
 {
     xdeDocItem->propertyLabel.setValue(QFileInfo(filepath).baseName());
-    const TDF_Label labelRoot = xdeDocItem->createRootAssembly();
-    const TopoDS_Shape shapeRoot = xdeDocItem->shape(labelRoot);
-    xdeDocItem->propertyArea.setQuantity(BRepUtils::area(shapeRoot));
-    xdeDocItem->propertyVolume.setQuantity(BRepUtils::volume(shapeRoot));
+    QuantityArea area = {};
+    QuantityVolume volume = {};
+    for (const TDF_Label& label : xdeDocItem->topLevelFreeShapes()) {
+        const TopoDS_Shape shape = xdeDocItem->shape(label);
+        area += BRepUtils::area(shape);
+        volume += BRepUtils::volume(shape);
+    }
+
+    xdeDocItem->propertyArea.setQuantity(area);
+    xdeDocItem->propertyVolume.setQuantity(volume);
 }
 
 } // namespace Mayo

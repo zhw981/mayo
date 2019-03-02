@@ -42,20 +42,6 @@ const Handle_XCAFDoc_ColorTool& XdeDocumentItem::colorTool() const
     return m_colorTool;
 }
 
-TDF_Label XdeDocumentItem::createRootAssembly()
-{
-    const std::vector<TDF_Label> vecFreeShape = this->topLevelFreeShapes();
-    if (vecFreeShape.size() > 1) {
-        const TDF_Label asmLabel = m_shapeTool->NewShape();
-        for (const TDF_Label& shapeLabel : vecFreeShape)
-            m_shapeTool->AddComponent(asmLabel, shapeLabel, TopLoc_Location());
-        m_shapeTool->UpdateAssemblies();
-        this->rebuildAssemblyTree();
-        return asmLabel;
-    }
-    return vecFreeShape.size() == 1 ? vecFreeShape.front() : TDF_Label();
-}
-
 void XdeDocumentItem::rebuildAssemblyTree()
 {
     m_asmTree.clear();

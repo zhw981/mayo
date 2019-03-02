@@ -6,9 +6,10 @@
 
 #pragma once
 
-#include "io_base.h"
+#include "io_handler.h"
 
 #include <QtCore/QObject>
+#include <memory>
 #include <string>
 #include <vector>
 class QFileInfo;
@@ -64,23 +65,23 @@ public:
 
     ArrayDocumentConstIterator findDocumentByLocation(const QFileInfo& loc) const;
 
-    static const std::vector<PartFormat>& partFormats();
+    static Span<const PartFormat> partFormats();
     static QString partFormatFilter(PartFormat format);
     static QStringList partFormatFilters();
     static PartFormat findPartFormat(const QString& filepath);
 
-    IoBase::Result importInDocument(
+    Io::Result importInDocument(
             Document* doc,
             PartFormat format,
             const QString& filepath,
             qttask::Progress* progress = nullptr);
-    IoBase::Result exportDocumentItems(
+    Io::Result exportDocumentItems(
             Span<const ApplicationItem> spanAppItem,
             PartFormat format,
-            const ExportOptions& options,
             const QString& filepath,
             qttask::Progress* progress = nullptr);
-    static bool hasExportOptionsForFormat(PartFormat format);
+    static PropertyOwner* optionsImport(PartFormat format);
+    static PropertyOwner* optionsExport(PartFormat format);
 
 signals:
     void documentAdded(Document* doc);

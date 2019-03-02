@@ -6,35 +6,34 @@
 
 #pragma once
 
-#include "io_base.h"
+#include "io_handler.h"
 #include "property_enumeration.h"
 #include <QtCore/QCoreApplication>
 
 namespace Mayo {
 
-class IoStl_OpenCascade : public IoBase {
+class IoStl_OpenCascade {
     Q_DECLARE_TR_FUNCTIONS(Mayo::IoStl_OpenCascade)
 public:
-    enum class StlFormat {
-        Ascii,
-        Binary
+    struct OptionsWrite : public PropertyOwner {
+        OptionsWrite();
+        PropertyEnumeration propertyStlFormat;
     };
+    static OptionsWrite* optionsWrite();
+    static PropertyOwner* optionsRead() { return nullptr; }
 
-    IoStl_OpenCascade();
-
-    Result readFile(
+    static Io::Result readFile(
             Document* doc,
             const QString& filepath,
-            qttask::Progress* progress) override;
-    Result writeFile(
+            qttask::Progress* progress);
+    static Io::Result writeFile(
             Span<const ApplicationItem> spanAppItem,
             const QString& filepath,
-            qttask::Progress* progress) override;
+            qttask::Progress* progress);
 
 private:
+    enum class StlFormat { Ascii, Binary };
     static const Enumeration& enum_StlFormat();
-
-    PropertyEnumeration m_outputStlFormat;
 };
 
 } // namespace Mayo

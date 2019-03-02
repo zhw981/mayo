@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "io_base.h"
+#include "io_handler.h"
 #include <QtCore/QCoreApplication>
 
 namespace Mayo {
 
-class IoOccBRep : public IoBase {
+class IoOccBRep : public IoHandler {
     Q_DECLARE_TR_FUNCTIONS(Mayo::IoOccBRep)
 public:
     Result readFile(

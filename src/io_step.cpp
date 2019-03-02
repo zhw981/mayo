@@ -25,7 +25,7 @@ namespace Mayo {
 
 namespace { std::mutex globalMutex; }
 
-IoBase::Result IoStep::readFile(
+IoHandler::Result IoStep::readFile(
         Document* doc, const QString& filepath, qttask::Progress* progress)
 {
     std::lock_guard<std::mutex> lock(globalMutex); Q_UNUSED(lock);
@@ -59,7 +59,7 @@ IoBase::Result IoStep::readFile(
     return Result::ok();
 }
 
-IoBase::Result IoStep::writeFile(
+IoHandler::Result IoStep::writeFile(
         Span<const ApplicationItem> spanAppItem,
         const QString& filepath,
         qttask::Progress* progress)
@@ -71,7 +71,7 @@ IoBase::Result IoStep::writeFile(
             writer.ChangeWriter().WS()->TransferWriter()->FinderProcess();
     auto guard = Mayo::makeScopeGuard([=]{ finderProcess->SetProgress(nullptr); });
     finderProcess->SetProgress(indicator);
-    for (const ApplicationItem& xdeAppItem : IoBase::xdeApplicationItems(spanAppItem)) {
+    for (const ApplicationItem& xdeAppItem : IoHandler::xdeApplicationItems(spanAppItem)) {
         if (xdeAppItem.isDocumentItem()) {
             auto xdeDocItem = static_cast<const XdeDocumentItem*>(xdeAppItem.documentItem());
             if (!writer.Transfer(xdeDocItem->cafDoc()))

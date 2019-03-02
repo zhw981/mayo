@@ -15,7 +15,7 @@
 
 namespace Mayo {
 
-IoBase::Result IoOccBRep::readFile(
+IoHandler::Result IoOccBRep::readFile(
         Document* doc, const QString& filepath, qttask::Progress* progress)
 {
     TopoDS_Shape shape;
@@ -36,13 +36,13 @@ IoBase::Result IoOccBRep::readFile(
     return Result::ok();
 }
 
-IoBase::Result IoOccBRep::writeFile(
+IoHandler::Result IoOccBRep::writeFile(
         Span<const ApplicationItem> spanAppItem,
         const QString& filepath,
         qttask::Progress* progress)
 {
     std::vector<TopoDS_Shape> vecShape;
-    for (const ApplicationItem& xdeAppItem : IoBase::xdeApplicationItems(spanAppItem)) {
+    for (const ApplicationItem& xdeAppItem : IoHandler::xdeApplicationItems(spanAppItem)) {
         if (xdeAppItem.isDocumentItem()) {
             auto xdeDocItem = static_cast<const XdeDocumentItem*>(xdeAppItem.documentItem());
             for (const TDF_Label& label : xdeDocItem->topLevelFreeShapes())

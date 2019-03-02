@@ -45,7 +45,7 @@ HEADERS += \
     src/gpx_xde_document_item.h \
     src/gui_application.h \
     src/gui_document.h \
-    src/io_base.h \
+    src/io_handler.h \
     src/io_iges.h \
     src/io_occ_brep.h \
     src/io_step.h \
@@ -56,6 +56,7 @@ HEADERS += \
     src/mesh_item.h \
     src/mesh_utils.h \
     src/occ_progress.h \
+    src/occ_progress.h \
     src/occt_window.h \
     src/options.h \
     src/property.h \
@@ -64,6 +65,7 @@ HEADERS += \
     src/qt_occ_view_controller.h \
     src/quantity.h \
     src/result.h \
+    src/scope_guard.h \
     src/scope_guard.h \
     src/span.h \
     src/string_utils.h \
@@ -108,7 +110,7 @@ SOURCES += \
     src/gpx_xde_document_item.cpp \
     src/gui_application.cpp \
     src/gui_document.cpp \
-    src/io_base.cpp \
+    src/io_handler.cpp \
     src/io_iges.cpp \
     src/io_occ_brep.cpp \
     src/io_step.cpp \
@@ -118,6 +120,7 @@ SOURCES += \
     src/math_utils.cpp \
     src/mesh_item.cpp \
     src/mesh_utils.cpp \
+    src/occ_progress.cpp \
     src/occ_progress.cpp \
     src/occt_window.cpp \
     src/options.cpp \

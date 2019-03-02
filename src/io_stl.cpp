@@ -33,29 +33,38 @@ static MeshItem* createMeshItem(
 static TopoDS_Shape xdeDocumentWholeShape(const XdeDocumentItem* xdeDocItem)
 {
     TopoDS_Shape shape;
-    const std::vector<TDF_Label> vecFreeShape = xdeDocItem->topLevelFreeShapes();
-    if (vecFreeShape.size() > 1) {
+    const TDF_LabelSequence seqFreeShape = xdeDocItem->topLevelFreeShapes();
+    if (seqFreeShape.Size() > 1) {
         TopoDS_Compound cmpd;
         BRep_Builder builder;
         builder.MakeCompound(cmpd);
-        for (const TDF_Label& label : vecFreeShape)
+        for (const TDF_Label& label : seqFreeShape)
             builder.Add(cmpd, xdeDocItem->shape(label));
         shape = cmpd;
     }
-    else if (vecFreeShape.size() == 1) {
-        shape = xdeDocItem->shape(vecFreeShape.front());
+    else if (seqFreeShape.Size() == 1) {
+        shape = xdeDocItem->shape(seqFreeShape.First());
     }
     return shape;
 }
 
-IoStl_OpenCascade::IoStl_OpenCascade()
-    : m_outputStlFormat(nullptr, tr("Format"), &enum_StlFormat())
+const Enumeration& IoStl_OpenCascade::enum_StlFormat()
 {
-    m_outputStlFormat.setValue(static_cast<int>(StlFormat::Binary)); // Default
-    this->addOptionWrite(&m_outputStlFormat);
+    static Enumeration enumeration;
+    if (enumeration.size() == 0) {
+        enumeration.map(static_cast<int>(StlFormat::Ascii), tr("Ascii"));
+        enumeration.map(static_cast<int>(StlFormat::Binary), tr("Binary"));
+    }
+    return enumeration;
 }
 
-IoBase::Result IoStl_OpenCascade::readFile(
+IoStl_OpenCascade::OptionsWrite* IoStl_OpenCascade::optionsWrite()
+{
+    static OptionsWrite options;
+    return &options;
+}
+
+Io::Result IoStl_OpenCascade::readFile(
         Document* doc, const QString& filepath, qttask::Progress* progress)
 {
     Handle_Message_ProgressIndicator indicator = new OccProgress(progress);
@@ -66,20 +75,20 @@ IoBase::Result IoStl_OpenCascade::readFile(
         item->propertyLabel.setValue(QFileInfo(filepath).baseName());
         item->setTriangulation(mesh);
         doc->addRootItem(item);
-        return Result::ok();
+        return Io::Result::ok();
     }
     // TODO: handle case where the operation is aborted
-    return Result::error(tr("Imported STL mesh is null"));
+    return Io::Result::error(tr("Imported STL mesh is null"));
 }
 
-IoBase::Result IoStl_OpenCascade::writeFile(
+Io::Result IoStl_OpenCascade::writeFile(
         Span<const ApplicationItem> spanAppItem,
         const QString& filepath,
         qttask::Progress* progress)
 {
     Q_ASSERT(!spanAppItem.empty());
 
-    const bool isAsciiFormat = m_outputStlFormat.valueAs<StlFormat>() == StlFormat::Ascii;
+    const StlFormat format = optionsWrite()->propertyStlFormat.valueAs<StlFormat>();
     const ApplicationItem& appItem = spanAppItem.at(0);
     const DocumentItem* docItem = appItem.documentItem();
 
@@ -98,10 +107,10 @@ IoBase::Result IoStl_OpenCascade::writeFile(
 
     if (!shape.IsNull()) {
         StlAPI_Writer writer;
-        writer.ASCIIMode() = isAsciiFormat;
+        writer.ASCIIMode() = format == StlFormat::Ascii;
         const bool ok = writer.Write(shape, filepath.toLocal8Bit().constData());
         if (!ok)
-            return Result::error(tr("Unknown StlAPI_Writer failure"));
+            return Io::Result::error(tr("Unknown StlAPI_Writer failure"));
     }
     else if (meshItem != nullptr) {
         Handle_Message_ProgressIndicator indicator = new OccProgress(progress);
@@ -109,27 +118,22 @@ IoBase::Result IoStl_OpenCascade::writeFile(
         const QByteArray filepathLocal8b = filepath.toLocal8Bit();
         const OSD_Path osdFilepath(filepathLocal8b.constData());
         const Handle_Poly_Triangulation& mesh = meshItem->triangulation();
-        if (isAsciiFormat)
+        if (format == StlFormat::Ascii)
             occOk = RWStl::WriteAscii(mesh, osdFilepath, indicator);
         else
             occOk = RWStl::WriteBinary(mesh, osdFilepath, indicator);
         if (!occOk)
-            return Result::error(tr("Unknown error"));
+            return Io::Result::error(tr("Unknown error"));
     }
     else {
-        return Result::error(tr("No input item"));
+        return Io::Result::error(tr("No input item"));
     }
-    return Result::ok();
+    return Io::Result::ok();
 }
 
-const Enumeration& IoStl_OpenCascade::enum_StlFormat()
+IoStl_OpenCascade::OptionsWrite::OptionsWrite()
+    : propertyStlFormat(this, IoStl_OpenCascade::tr("Format"), &enum_StlFormat())
 {
-    static Enumeration enumeration;
-    if (enumeration.size() == 0) {
-        enumeration.map(static_cast<int>(StlFormat::Ascii), tr("Ascii"));
-        enumeration.map(static_cast<int>(StlFormat::Binary), tr("Binary"));
-    }
-    return enumeration;
 }
 
 #ifdef HAVE_GMIO

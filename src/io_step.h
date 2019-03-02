@@ -6,16 +6,14 @@
 
 #pragma once
 
-#include "io_base.h"
+#include "io_handler.h"
 #include <QtCore/QCoreApplication>
 
 namespace Mayo {
 
-class IoStep : public IoBase {
+class IoStep : public IoHandler {
     Q_DECLARE_TR_FUNCTIONS(Mayo::IoStep)
 public:
-    IoStep() = default;
-
     Result readFile(
             Document* doc,
             const QString& filepath,

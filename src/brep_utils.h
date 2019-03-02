@@ -28,22 +28,23 @@ struct BRepUtils {
 
     static bool moreComplex(TopAbs_ShapeEnum lhs, TopAbs_ShapeEnum rhs);
 
-    enum VolumeOption {
-        VolumeNone = 0x0,
-        VolumeOnlyClosed = 0x01,
-        VolumeSkipShared = 0x02
-    };
-    using VolumeOptions = QFlags<VolumeOption>;
     enum AreaOption {
         AreaNone = 0x0,
         AreaSkipShared = 0x01
     };
     using AreaOptions = QFlags<AreaOption>;
 
-    static QuantityVolume volume(
-            const TopoDS_Shape& shape, VolumeOptions opt = VolumeNone);
+    enum VolumeOption {
+        VolumeNone = 0x0,
+        VolumeOnlyClosed = 0x01,
+        VolumeSkipShared = 0x02
+    };
+    using VolumeOptions = QFlags<VolumeOption>;
+
     static QuantityArea area(
             const TopoDS_Shape& shape, AreaOptions opt = AreaNone);
+    static QuantityVolume volume(
+            const TopoDS_Shape& shape, VolumeOptions opt = VolumeNone);
 };
 
 

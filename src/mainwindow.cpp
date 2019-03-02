@@ -466,7 +466,7 @@ void MainWindow::runImportTask(
     task->run([=]{
         QTime chrono;
         chrono.start();
-        const IoBase::Result result =
+        const IoHandler::Result result =
                 Application::instance()->importInDocument(
                     doc, format, filepath, &task->progress());
         QString msg;
@@ -492,7 +492,7 @@ void MainWindow::runExportTask(
     task->run([=]{
         QTime chrono;
         chrono.start();
-        const IoBase::Result result =
+        const IoHandler::Result result =
                 Application::instance()->exportDocumentItems(
                     spanAppItem, format, opts, filepath, &task->progress());
         QString msg;
