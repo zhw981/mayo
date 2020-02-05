@@ -124,6 +124,7 @@ using PropertyInt = GenericScalarProperty<int>;
 using PropertyDouble = GenericScalarProperty<double>;
 using PropertyQByteArray = GenericProperty<QByteArray>;
 using PropertyQString = GenericProperty<QString>;
+using PropertyQStringList = GenericProperty<QStringList>;
 using PropertyQDateTime = GenericProperty<QDateTime>;
 using PropertyOccColor = GenericProperty<Quantity_Color>;
 using PropertyOccPnt = GenericProperty<gp_Pnt>;
