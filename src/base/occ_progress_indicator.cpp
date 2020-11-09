@@ -10,12 +10,34 @@
 
 namespace Mayo {
 
-OccProgressIndicator::OccProgressIndicator(TaskProgress *progress)
+OccProgressIndicator::OccProgressIndicator(TaskProgress* progress)
     : m_progress(progress)
 {
+#if OCC_VERSION_HEX < OCC_VERSION_CHECK(7, 5, 0)
     this->SetScale(0., 100., 1.);
+#endif
 }
 
+#if OCC_VERSION_HEX >= OCC_VERSION_CHECK(7, 5, 0)
+void OccProgressIndicator::Show(const Message_ProgressScope& scope, const bool /*isForce*/)
+{
+    if (m_progress) {
+        if (scope.Name() && scope.Name() != m_lastStepName) {
+            m_progress->setStep(QString::fromUtf8(scope.Name()));
+            m_lastStepName = scope.Name();
+        }
+
+        const double pc = scope.GetPortion(); // Always within [0,1]
+        const int minVal = 0;
+        const int maxVal = 100;
+        const int val = minVal + pc * (maxVal - minVal);
+        if (m_lastProgress != val) {
+            m_progress->setValue(val);
+            m_lastProgress = val;
+        }
+    }
+}
+#else
 bool OccProgressIndicator::Show(const bool /*force*/)
 {
     if (m_progress) {
@@ -32,6 +54,7 @@ bool OccProgressIndicator::Show(const bool /*force*/)
 
     return true;
 }
+#endif
 
 bool OccProgressIndicator::UserBreak()
 {

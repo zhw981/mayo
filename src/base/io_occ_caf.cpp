@@ -9,6 +9,7 @@
 #include "occ_progress_indicator.h"
 #include "scope_import.h"
 #include "task_progress.h"
+#include "tkernel_utils.h"
 
 #include <Transfer_TransientProcess.hxx>
 #include <IGESCAFControl_Reader.hxx>
@@ -20,8 +21,7 @@
 namespace Mayo {
 namespace IO {
 
-std::mutex& cafGlobalMutex()
-{
+std::mutex& cafGlobalMutex() {
     static std::mutex mutex;
     return mutex;
 }
@@ -49,13 +49,19 @@ template<typename CAF_READER>
 bool cafGenericReadTransfer(CAF_READER& reader, DocumentPtr doc, TaskProgress* progress)
 {
     Handle_Message_ProgressIndicator indicator = new OccProgressIndicator(progress);
+#if OCC_VERSION_HEX < OCC_VERSION_CHECK(7, 5, 0)
     Handle_XSControl_WorkSession ws = cafWorkSession(reader);
     ws->MapReader()->SetProgress(indicator);
     auto _ = gsl::finally([&]{ ws->MapReader()->SetProgress(nullptr); });
+#endif
 
     XCafScopeImport import(doc);
     Handle_TDocStd_Document stdDoc = doc;
+#if OCC_VERSION_HEX >= OCC_VERSION_CHECK(7, 5, 0)
+    const bool okTransfer = reader.Transfer(stdDoc, indicator->Start());
+#else
     const bool okTransfer = reader.Transfer(stdDoc);
+#endif
     import.setConfirmation(okTransfer && !TaskProgress::isAbortRequested(progress));
     return okTransfer;
 }
@@ -64,8 +70,11 @@ template<typename CAF_WRITER>
 bool cafGenericWriteTransfer(CAF_WRITER& writer, Span<const ApplicationItem> appItems, TaskProgress* progress)
 {
     Handle_Message_ProgressIndicator indicator = new OccProgressIndicator(progress);
+#if OCC_VERSION_HEX < OCC_VERSION_CHECK(7, 5, 0)
     cafFinderProcess(writer)->SetProgress(indicator);
     auto _ = gsl::finally([&]{ cafFinderProcess(writer)->SetProgress(nullptr); });
+#endif
+
     for (const ApplicationItem& item : appItems) {
         bool okItemTransfer = false;
         if (item.isDocument())
