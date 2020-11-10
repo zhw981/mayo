@@ -7,6 +7,14 @@
 #include <QWidget>
 #include <Standard_WarningsRestore.hxx>
 
+#if OCC_VERSION_HEX >= 0x070500
+#  define OcctWindow_DoResize_CONST
+#  define OcctWindow_Rect_MUTABLE
+#else
+#  define OcctWindow_DoResize_CONST const
+#  define OcctWindow_Rect_MUTABLE mutable
+#endif
+
 //!  OcctWindow class implements Aspect_Window interface using Qt API
 //!  as a platform-independent source of window geometry information.
 //!  A similar class should be used instead of platform-specific OCCT
@@ -48,7 +56,7 @@ public:
   virtual Aspect_Drawable NativeParentHandle() const Standard_OVERRIDE;
 
   //! Applies the resizing to the window <me>
-  virtual Aspect_TypeOfResize DoResize() Standard_OVERRIDE;
+  virtual Aspect_TypeOfResize DoResize() OcctWindow_DoResize_CONST Standard_OVERRIDE;
 
   //! Returns True if the window <me> is opened
   //! and False if the window is closed.
@@ -79,9 +87,9 @@ public:
   virtual Aspect_FBConfig NativeFBConfig() const Standard_OVERRIDE { return NULL; }
 
 protected:
-  Standard_Integer myXLeft;
-  Standard_Integer myYTop;
-  Standard_Integer myXRight;
-  Standard_Integer myYBottom;
+  OcctWindow_Rect_MUTABLE Standard_Integer myXLeft;
+  OcctWindow_Rect_MUTABLE Standard_Integer myYTop;
+  OcctWindow_Rect_MUTABLE Standard_Integer myXRight;
+  OcctWindow_Rect_MUTABLE Standard_Integer myYBottom;
   QWidget* myWidget;
 };

@@ -240,8 +240,8 @@ void OccStepReader::changeStaticVariables(OccStaticVariablesRollback* rollback) 
         case Encoding::ISO_8859_7: return "iso8859-7";
         case Encoding::ISO_8859_8: return "iso8859-8";
         case Encoding::ISO_8859_9: return "iso8859-9";
-        }
 #endif
+        }
         Q_UNREACHABLE();
     };
 

@@ -8,16 +8,18 @@
 
 #include <Standard_Handle.hxx>
 #include <Standard_Version.hxx>
-
-#ifndef OCC_VERSION_CHECK
-#  define OCC_VERSION_CHECK(major, minor, patch) ((major<<16)|(minor<<8)|(patch))
-#endif
-
-#if OCC_VERSION_HEX >= OCC_VERSION_CHECK(7, 5, 0)
+#if OCC_VERSION_HEX >= 0x070500
 #  include <Message_ProgressRange.hxx>
 #else
 #  include <Standard_Handle.hxx>
 class Message_ProgressIndicator;
+#endif
+
+#ifndef OCC_VERSION_CHECK
+// Turns the major, minor and patch numbers of a version into an integer
+// 0xMMNNPP (MM = major, NN = minor, PP = patch).
+// This can be compared with OCC_VERSION_HEX
+#  define OCC_VERSION_CHECK(major, minor, patch) ((major<<16)|(minor<<8)|(patch))
 #endif
 
 namespace Mayo {
